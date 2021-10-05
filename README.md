@@ -1,0 +1,2 @@
+# multiscale_methylation_plot_pipeline
+Snakemake pipeline to generate multiscale methylation plots
