@@ -1,0 +1,8 @@
+# Ignore macOS directory preferences
+.*DS_Store
+
+# Ignore any created files
+analysis/*
+
+# Ignore any raw data files
+raw_data/*.bed*
