@@ -83,11 +83,11 @@ multiscaleMethylationPlot <- function(grl,
 
 # Get the mean multiscale data
 means <- lapply(
-    list.files("analysis/stats", pattern="cross_sample_mean", full.names=TRUE), function(x) {
+    list.files("../analysis/stats", pattern="cross_sample_mean", full.names=TRUE), function(x) {
         return(rtracklayer::import(x, format = "bedGraph"))
     }
 )
-cnames <- list.files("analysis/stats", pattern="cross_sample_mean")
+cnames <- list.files("../analysis/stats", pattern="cross_sample_mean")
 cnames <- gsub("cross_sample_mean", "mean", cnames)
 cnames <- gsub(".bed.gz", "", cnames)
 names(means) <- cnames
@@ -97,21 +97,21 @@ chr16_0_35Mb <- GRanges(Rle(c("chr16"), c(1)), IRanges(1, width = 35000000))
 
 # Single samples
 sampl_100 <- lapply(
-    list.files("analysis/means", pattern="Heyn_2012_100yr", full.names=TRUE), function(x) {
+    list.files("../analysis/means", pattern="Heyn_2012_100yr", full.names=TRUE), function(x) {
         return(rtracklayer::import(x, format = "bedGraph", which = chr16_0_35Mb))
     }
 )
-cnames <- list.files("analysis/means", pattern="Heyn_2012_100yr")
+cnames <- list.files("../analysis/means", pattern="Heyn_2012_100yr")
 cnames <- gsub("Heyn_2012_100yr", "100yr", cnames)
 cnames <- gsub(".bed.gz", "", cnames)
 names(sampl_100) <- cnames
 
 sampl_New <- lapply(
-    list.files("analysis/means", pattern="Heyn_2012_Newborn", full.names=TRUE), function(x) {
+    list.files("../analysis/means", pattern="Heyn_2012_Newborn", full.names=TRUE), function(x) {
         return(rtracklayer::import(x, format = "bedGraph", which = chr16_0_35Mb))
     }
 )
-cnames <- list.files("analysis/means", pattern="Heyn_2012_Newborn")
+cnames <- list.files("../analysis/means", pattern="Heyn_2012_Newborn")
 cnames <- gsub("Heyn_2012_Newborn", "New", cnames)
 cnames <- gsub(".bed.gz", "", cnames)
 names(sampl_New) <- cnames
