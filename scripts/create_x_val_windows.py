@@ -26,5 +26,5 @@ def create_x_val_windows(in_bed, power, outfn):
 
     bed.to_csv(outfn, sep='\t', columns=['chr', 'win_beg', 'win_end', 'start', 'end'], header=False, index=False)
 
-create_x_val_windows(snakemake.input['bed'], float(snakemake.wildcards['pow']), snakemake.output['bed'])
+create_x_val_windows(snakemake.input['bed'], float(snakemake.wildcards['power']), snakemake.output['bed'])
 
