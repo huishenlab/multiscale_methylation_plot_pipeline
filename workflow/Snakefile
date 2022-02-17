@@ -37,30 +37,67 @@ def create_tag(step):
         return f'{int(step/1000)}kb'
     else: # Anything bigger will be defined as megabases
         return f'{int(step/1000000)}Mb'
-
 x_tag = create_tag(config['x_step'])
+
+# Determine output directory location
+def set_output_directory():
+    if config['output_directory'] == '':
+        return os.getcwd()
+    else:
+        return config['output_directory']
+output_directory = set_output_directory()
 
 # Run all the things
 rule all:
     input:
-        f"analysis/x_values/x_values_no_lengths_{x_tag}.bed",
-        f"analysis/x_values/x_values_{x_tag}.bed",
-        expand(f"analysis/x_values/x_values_{x_tag}_{{powers.pows}}.bed", powers=powers.itertuples()),
-        expand(f"analysis/means/{{samples.sample}}_{{powers.pows}}.bed.gz", samples=samples.itertuples(), powers=powers.itertuples()),
-        expand(f"analysis/stats/cross_sample_mean_{{powers.pows}}.bed.gz", powers=powers.itertuples()),
-        expand(f"analysis/stats/cross_sample_stddev_{{powers.pows}}.bed.gz", powers=powers.itertuples()),
+        # Create x-axis values used in plotting the multiscale plot
+        f'{output_directory}/analysis/x_values/x_values_no_lengths_{x_tag}.bed',
+
+        # Add the chromosome length to the x-axis values file
+        f'{output_directory}/analysis/x_values/x_values_{x_tag}.bed',
+
+        # Create windows around the x values based on the 10^(pow) window size
+        expand(
+            f'{output_directory}/analysis/x_values/x_values_{x_tag}_{{powers.pows}}.bed',
+            powers=powers.itertuples()
+        ),
+
+        # Calculate mean values in windows for each sample
+        expand(
+            f'{output_directory}/analysis/means/{{samples.sample}}_{{powers.pows}}.bed.gz',
+            samples=samples.itertuples(),
+            powers=powers.itertuples()
+        ),
+
+        # Calculate average value across all input samples
+        expand(
+            f'{output_directory}/analysis/stats/cross_sample_mean_{{powers.pows}}.bed.gz',
+            powers=powers.itertuples()
+        ),
+
+        # Calculate standard deviation across all input samples
+        expand(
+            f'{output_directory}/analysis/stats/cross_sample_stddev_{{powers.pows}}.bed.gz',
+            powers=powers.itertuples()
+        ),
 
 # Rule to create x-axis values that will be used when plotting the multiscale plot
 rule create_x_values:
     input:
         config['reference_fai'],
     output:
-        bed = f"analysis/x_values/x_values_no_lengths_{x_tag}.bed",
+        bed = f'{output_directory}/analysis/x_values/x_values_no_lengths_{x_tag}.bed',
+    params:
+        outdir = directory(f'{output_directory}/analysis/x_values/'),
+        step = config['x_step'],
+    log:
+        stderr = f'{output_directory}/logs/create_x_values_{x_tag}.log',
+    benchmark:
+        f'{output_directory}/benchmarks/create_x_values_{x_tag}.log',
+    conda:
+        '../envs/bedtools.yaml',
     envmodules:
         config['envmodules']['bedtools'],
-    params:
-        outdir = directory("analysis/x_values/"),
-        step = config['x_step'],
     threads: 1,
     resources:
         mem_gb = config['hpc_parameters']['low_memory_gb'],
@@ -69,10 +106,11 @@ rule create_x_values:
         """
         set +o pipefail
         mkdir -p {params.outdir}
+
         bedtools makewindows \
             -w 1 -s {params.step} \
             -g {input} | \
-        sort -k1,1 -k2,2n > {output.bed}
+        sort -k1,1 -k2,2n 1> {output.bed} 2> {log.stderr}
         """
 
 # Rule to add the chromosome length as a fourth column in the x-axis values BED file, as well as restricting to
@@ -81,16 +119,20 @@ rule create_x_values:
 # Don't want the windows running past the end of the chromosomes!
 rule add_chr_length:
     input:
-        bed = f"analysis/x_values/x_values_no_lengths_{x_tag}.bed",
+        bed = f'{output_directory}/analysis/x_values/x_values_no_lengths_{x_tag}.bed',
         ref = config['reference_fai'],
     output:
-        bed = f"analysis/x_values/x_values_{x_tag}.bed",
+        bed = f'{output_directory}/analysis/x_values/x_values_{x_tag}.bed',
+    benchmark:
+        f'{output_directory}/benchmarks/x_values_{x_tag}.log',
+    conda:
+        '../envs/python.yaml',
     threads: 1,
     resources:
         mem_gb = config['hpc_parameters']['low_memory_gb'],
         walltime = config['hpc_parameters']['low_walltime'],
     script:
-        "scripts/add_chrom_length.py"
+        "../scripts/add_chrom_length.py"
 
 # Rule to create the windows that will be used to calculate the average methylation values that go into the multiscale
 # plot
@@ -98,33 +140,43 @@ rule add_chr_length:
 # Beginning and end are adjusted as needed for the start and end of the chromosome
 rule create_x_value_windows:
     input:
-        bed = f"analysis/x_values/x_values_{x_tag}.bed",
+        bed = f'{output_directory}/analysis/x_values/x_values_{x_tag}.bed',
     output:
-        bed = f"analysis/x_values/x_values_{x_tag}_{{power}}.bed",
+        bed = f'{output_directory}/analysis/x_values/x_values_{x_tag}_{{power}}.bed',
+    benchmark:
+        f'{output_directory}/benchmarks/x_windows_{x_tag}.log',
+    conda:
+        '../envs/python.yaml',
     threads: 1,
     resources:
         mem_gb = config['hpc_parameters']['low_memory_gb'],
         walltime = config['hpc_parameters']['low_walltime'],
     script:
-        "scripts/create_x_val_windows.py"
+        "../scripts/create_x_val_windows.py"
 
 # Rule to calculate the average methylation value in the windows calculated previously
 # If config['target'] is defined, then the input BED file will be subset to data that overlaps config['target']
 rule calculate_means:
     input:
-        windows = f"analysis/x_values/x_values_{x_tag}_{{power}}.bed",
-        data    = f"raw_data/{{sample}}.bed.gz",
+        windows = f'{output_directory}/analysis/x_values/x_values_{x_tag}_{{power}}.bed',
+        data    = f'{config["input_location"]}/{{sample}}.bed.gz',
     output:
-        bed_gz = f"analysis/means/{{sample}}_{{power}}.bed.gz",
+        bed_gz = f'{output_directory}/analysis/means/{{sample}}_{{power}}.bed.gz',
+    params:
+        outdir = directory(f'{output_directory}/analysis/means/'),
+        target = config['targets']
+    log:
+        stderr = f'{output_directory}/logs/calculate_means_{x_tag}.log',
+    benchmark:
+        f'{output_directory}/benchmarks/calculate_means_{x_tag}.log',
+    conda:
+        '../envs/bedtools.yaml',
+    envmodules:
+        config['envmodules']['bedtools'],
     threads: 1,
     resources:
         mem_gb = config['hpc_parameters']['mid_memory_gb'],
         walltime = config['hpc_parameters']['mid_walltime'],
-    params:
-        outdir = directory("analysis/means/"),
-        target = config['targets']
-    envmodules:
-        config['envmodules']['bedtools'],
     shell:
         """
         set +o pipefail
@@ -142,7 +194,7 @@ rule calculate_means:
                 -c 4 -o mean | \
             cut -f 1,4-6 | \
             sort -k1,1 -k2,2n | \
-            gzip > {output.bed_gz}
+            gzip 1> {output.bed_gz} 2> {log.stderr}
         else
             bedtools map \
                 -prec 2 \
@@ -151,7 +203,7 @@ rule calculate_means:
                 -c 4 -o mean | \
             cut -f 1,4-6 | \
             sort -k1,1 -k2,2n | \
-            gzip > {output.bed_gz}
+            gzip 1> {output.bed_gz} 2> {log.stderr}
         fi
         """
 
@@ -159,7 +211,7 @@ rule calculate_means:
 def get_all_samples(wildcards):
     files = []
     for s in list(samples['sample']):
-        files.append(f'analysis/means/{s}_{wildcards.power}.bed.gz')
+        files.append(f'{output_directory}/analysis/means/{s}_{wildcards.power}.bed.gz')
     files.sort()
     return files
 
@@ -168,14 +220,18 @@ rule sample_mean_std_dev:
     input:
         files = get_all_samples,
     output:
-        mean_gz = f"analysis/stats/cross_sample_mean_{{power}}.bed.gz",
-        stdv_gz = f"analysis/stats/cross_sample_stddev_{{power}}.bed.gz",
+        mean_gz = f'{output_directory}/analysis/stats/cross_sample_mean_{{power}}.bed.gz',
+        stdv_gz = f'{output_directory}/analysis/stats/cross_sample_stddev_{{power}}.bed.gz',
+    params:
+        outdir = directory(f'{output_directory}/analysis/stats/'),
+        sample = list(samples['sample']),
+    benchmark:
+        f'{output_directory}/benchmarks/calculate_stats_{x_tag}.log',
+    conda:
+        '../envs/python.yaml',
     threads: 1,
     resources:
         mem_gb = config['hpc_parameters']['mid_memory_gb'],
         walltime = config['hpc_parameters']['low_walltime'],
-    params:
-        outdir = directory("analysis/stats/"),
-        sample = list(samples['sample']),
     script:
-        "scripts/calculate_stats.py"
+        "../scripts/calculate_stats.py"
