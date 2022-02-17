@@ -3,6 +3,9 @@
 
 # Ignore any created files
 analysis/*
+benchmarks/*
+logs/*
+.snakemake/*
 
 # Ignore any raw data files
 raw_data/*.bed*
