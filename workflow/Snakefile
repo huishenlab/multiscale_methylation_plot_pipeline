@@ -91,11 +91,11 @@ rule create_x_values:
         outdir = directory(f'{output_directory}/analysis/x_values/'),
         step = config['x_step'],
     log:
-        stderr = f'{output_directory}/logs/create_x_values_{x_tag}.log',
+        stderr = f'{output_directory}/logs/x_values/create_x_values_{x_tag}.log',
     benchmark:
-        f'{output_directory}/benchmarks/create_x_values_{x_tag}.log',
+        f'{output_directory}/benchmarks/x_values/create_x_values_{x_tag}.log',
     conda:
-        '../envs/bedtools.yaml',
+        'envs/bedtools.yaml',
     envmodules:
         config['envmodules']['bedtools'],
     threads: 1,
@@ -124,15 +124,15 @@ rule add_chr_length:
     output:
         bed = f'{output_directory}/analysis/x_values/x_values_{x_tag}.bed',
     benchmark:
-        f'{output_directory}/benchmarks/x_values_{x_tag}.log',
+        f'{output_directory}/benchmarks/x_values/x_values_{x_tag}.log',
     conda:
-        '../envs/python.yaml',
+        'envs/python.yaml',
     threads: 1,
     resources:
         mem_gb = config['hpc_parameters']['low_memory_gb'],
         walltime = config['hpc_parameters']['low_walltime'],
     script:
-        "../scripts/add_chrom_length.py"
+        "scripts/add_chrom_length.py"
 
 # Rule to create the windows that will be used to calculate the average methylation values that go into the multiscale
 # plot
@@ -144,15 +144,15 @@ rule create_x_value_windows:
     output:
         bed = f'{output_directory}/analysis/x_values/x_values_{x_tag}_{{power}}.bed',
     benchmark:
-        f'{output_directory}/benchmarks/x_windows_{x_tag}.log',
+        f'{output_directory}/benchmarks/x_values/x_windows_{x_tag}_{{power}}.log',
     conda:
-        '../envs/python.yaml',
+        'envs/python.yaml',
     threads: 1,
     resources:
         mem_gb = config['hpc_parameters']['low_memory_gb'],
         walltime = config['hpc_parameters']['low_walltime'],
     script:
-        "../scripts/create_x_val_windows.py"
+        "scripts/create_x_val_windows.py"
 
 # Rule to calculate the average methylation value in the windows calculated previously
 # If config['target'] is defined, then the input BED file will be subset to data that overlaps config['target']
@@ -166,11 +166,11 @@ rule calculate_means:
         outdir = directory(f'{output_directory}/analysis/means/'),
         target = config['targets']
     log:
-        stderr = f'{output_directory}/logs/calculate_means_{x_tag}.log',
+        stderr = f'{output_directory}/logs/means/{{sample}}_{{power}}.log',
     benchmark:
-        f'{output_directory}/benchmarks/calculate_means_{x_tag}.log',
+        f'{output_directory}/benchmarks/means/{{sample}}_{{power}}.log',
     conda:
-        '../envs/bedtools.yaml',
+        'envs/bedtools.yaml',
     envmodules:
         config['envmodules']['bedtools'],
     threads: 1,
@@ -226,12 +226,12 @@ rule sample_mean_std_dev:
         outdir = directory(f'{output_directory}/analysis/stats/'),
         sample = list(samples['sample']),
     benchmark:
-        f'{output_directory}/benchmarks/calculate_stats_{x_tag}.log',
+        f'{output_directory}/benchmarks/stats/calculate_stats_{{power}}.log',
     conda:
-        '../envs/python.yaml',
+        'envs/python.yaml',
     threads: 1,
     resources:
         mem_gb = config['hpc_parameters']['mid_memory_gb'],
         walltime = config['hpc_parameters']['low_walltime'],
     script:
-        "../scripts/calculate_stats.py"
+        "scripts/calculate_stats.py"
