@@ -5,18 +5,18 @@ import re
 from snakemake.utils import validate, min_version
 
 # Set minimum version of Snakemake
-min_version('5.20.1')
+min_version('6.0')
 
 # Set configuration file location
 configfile:
-    'bin/config.yaml'
+    'config/config.yaml'
 
 # Constrain possible values of power
 wildcard_constraints:
     power = '\d+\.\d*',
 
 # Load sample base names from sample file
-samples = pd.read_table('samples.tsv', dtype=str).set_index(['sample'], drop=False)
+samples = pd.read_table(config['samples'], dtype=str).set_index(['sample'], drop=False)
 
 # Generate list of requested power values
 # Will create bins of size 10^X (for X in powers_list) that are centered around each value in create_x_values

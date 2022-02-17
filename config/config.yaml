@@ -1,14 +1,23 @@
 # Path to FAI-index of reference used
-# Example -  reference: /varidata/research/genomicdata/genomes/hg19/hg19.fa.fai
+#     Example -  reference_fai: /path/to/your/reference/hg19/hg19.fa.fai
 reference_fai: "null"
 
+# Samplesheet for specifying sample names
+samples: config/samples.tsv
+
+# Location of input data
+input_location: raw_data
+
+# Directory for writing output directories and files to (if '', write to same directory as pipeline)
+output_directory: ''
+
 # Path to targets BED file (can be gzipped)
-# Example - targets: example/targets.bed.gz
+#     Example - targets: example/targets.bed.gz
 targets: "null"
 
 # Step size of values along x-axis of multiscale plot
 # The multiscale plot will find the average methylation value in a bin size of 10^X (X defined by bounds below) centered
-#     on each x value
+#     on each x value as determined by x_step
 x_step: 10000
 
 # Bounds of the exponents used when generating the multiscale plot
